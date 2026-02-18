@@ -36,7 +36,7 @@ jobs:
       - name: Fetch Tests from Professor Repository
         run: |
           echo "Clonando os testes do repositório do professor"
-          git remote add joseaugustogoncalves https://github.com/joseaugustogoncalves/1-LMD-Produtos-Simples.git
+          git remote add joseaugustogoncalves https://github.com/joseaugustogoncalves/LMD-1-jogos-consolas.git
           git fetch joseaugustogoncalves solucao-final
           git checkout joseaugustogoncalves/solucao-final -- tests
       
