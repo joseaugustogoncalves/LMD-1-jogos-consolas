@@ -13,229 +13,140 @@ PASSED=0
 FAILED=0
 
 # Configuração MySQL
-MYSQL_CMD="mysql -h 127.0.0.1 -u root -ppassword games_systems --table"
-MYSQL_CMD_SILENT="mysql -h 127.0.0.1 -u root -ppassword games_systems -N -s"
+MYSQL_CMD="mysql -h 127.0.0.1 -u root -ppassword games_systems -N -s"
+MYSQL_CMD_TABLE="mysql -h 127.0.0.1 -u root -ppassword games_systems --table"
+
+# Diretório temporário para resultados do aluno
+mkdir -p /tmp/student_results
 
 echo "=========================================="
 echo "  VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
 echo "=========================================="
 echo ""
 
-# Função para extrair e executar query específica
-execute_student_query() {
+# Função para extrair query do arquivo do aluno
+extract_query() {
     local query_number=$1
-    local query=$(sed -n "/===== QUERY $query_number =====/,/===== QUERY/p" solucao.sql | grep -v "=====" | grep -v "^--" | grep -v "^$" | tr '\n' ' ')
-    echo "$query"
+    local start_marker="-- ===== QUERY $query_number ====="
+    local end_marker="-- ===== QUERY"
+    
+    # Extrair a query entre os marcadores
+    awk "/$start_marker/,/$end_marker/" solucao.sql | \
+        grep -v "=====" | \
+        grep -v "^--" | \
+        grep -v "^$" | \
+        tr '\n' ' ' | \
+        sed 's/;$//'
 }
 
 # Função para comparar resultados
-compare_count() {
-    local test_name=$1
-    local student_result=$2
-    local expected_result=$3
+compare_query_results() {
+    local test_number=$1
+    local test_name=$2
+    local query=$3
+    local expected_file="tests/expected_results/query${test_number}.txt"
+    local student_file="/tmp/student_results/query${test_number}.txt"
     
-    if [ "$student_result" == "$expected_result" ]; then
-        echo -e "${GREEN}✓ PASSOU${NC} - $test_name"
-        ((PASSED++))
-        return 0
-    else
-        echo -e "${RED}✗ FALHOU${NC} - $test_name"
-        echo -e "  ${YELLOW}Esperado:${NC} $expected_result"
-        echo -e "  ${YELLOW}Obtido:${NC}   $student_result"
+    echo -e "${CYAN}══════════════════════���═════════════════${NC}"
+    echo -e "${BLUE}TESTE $test_number: $test_name${NC}"
+    echo -e "${CYAN}════════════════════════════════════════${NC}"
+    
+    # Mostrar a query do aluno
+    echo -e "${YELLOW}Query do aluno:${NC}"
+    echo "$query"
+    echo ""
+    
+    # Executar query do aluno e salvar resultado
+    if ! $MYSQL_CMD -e "$query" > "$student_file" 2>/dev/null; then
+        echo -e "${RED}✗ ERRO ao executar a query!${NC}"
+        echo -e "${YELLOW}Verifique a sintaxe SQL.${NC}"
         ((FAILED++))
+        echo ""
         return 1
     fi
+    
+    # Mostrar resultado do aluno (primeiras 10 linhas)
+    echo -e "${YELLOW}Resultado do aluno:${NC}"
+    $MYSQL_CMD_TABLE -e "$query" 2>/dev/null | head -15
+    if [ $(wc -l < "$student_file") -gt 10 ]; then
+        echo "... (mostrando primeiras linhas)"
+    fi
+    echo ""
+    
+    # Verificar se arquivo esperado existe
+    if [ ! -f "$expected_file" ]; then
+        echo -e "${RED}✗ ERRO: Arquivo de resultado esperado não encontrado!${NC}"
+        echo -e "${YELLOW}Arquivo: $expected_file${NC}"
+        ((FAILED++))
+        echo ""
+        return 1
+    fi
+    
+    # Comparar resultados
+    if diff -q "$expected_file" "$student_file" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ PASSOU${NC} - Resultado idêntico ao esperado!"
+        ((PASSED++))
+    else
+        echo -e "${RED}✗ FALHOU${NC} - Resultado diferente do esperado!"
+        echo ""
+        echo -e "${YELLOW}Diferenças encontradas:${NC}"
+        echo -e "${CYAN}--- Esperado ---${NC}"
+        head -10 "$expected_file"
+        echo ""
+        echo -e "${CYAN}--- Obtido ---${NC}"
+        head -10 "$student_file"
+        echo ""
+        echo -e "${YELLOW}Detalhes completos da diferença:${NC}"
+        diff "$expected_file" "$student_file" | head -20
+        ((FAILED++))
+    fi
+    
+    echo ""
 }
 
 # ==========================================
-# TESTE 1: Listar todos os jogos
+# EXECUTAR TODOS OS TESTES
 # ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 1: Listar todos os jogos${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
 
-QUERY1=$(execute_student_query 1)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY1"
-echo ""
+# Teste 1
+QUERY1=$(extract_query 1)
+compare_query_results 1 "Listar todos os jogos" "$QUERY1"
 
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY1" 2>/dev/null
+# Teste 2
+QUERY2=$(extract_query 2)
+compare_query_results 2 "Contar quantos jogos existem" "$QUERY2"
 
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY1" 2>/dev/null | wc -l)
-compare_count "Total de registros" "$STUDENT_COUNT" "15"
-echo ""
+# Teste 3
+QUERY3=$(extract_query 3)
+compare_query_results 3 "Calcular preço médio" "$QUERY3"
 
-# ==========================================
-# TESTE 2: Contar quantos jogos existem
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 2: Contar quantos jogos existem${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+# Teste 4
+QUERY4=$(extract_query 4)
+compare_query_results 4 "Encontrar jogo mais caro" "$QUERY4"
 
-QUERY2=$(execute_student_query 2)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY2"
-echo ""
+# Teste 5
+QUERY5=$(extract_query 5)
+compare_query_results 5 "Jogo com menor nota" "$QUERY5"
 
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY2" 2>/dev/null
+# Teste 6
+QUERY6=$(extract_query 6)
+compare_query_results 6 "Top 5 jogos mais vendidos" "$QUERY6"
 
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY2" 2>/dev/null)
-compare_count "Total de jogos" "$STUDENT_COUNT" "15"
-echo ""
+# Teste 7
+QUERY7=$(extract_query 7)
+compare_query_results 7 "Contar jogos por plataforma" "$QUERY7"
 
-# ==========================================
-# TESTE 3: Calcular preço médio
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 3: Calcular preço médio${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
+# Teste 8
+QUERY8=$(extract_query 8)
+compare_query_results 8 "Total de cópias vendidas" "$QUERY8"
 
-QUERY3=$(execute_student_query 3)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY3"
-echo ""
+# Teste 9
+QUERY9=$(extract_query 9)
+compare_query_results 9 "Preço médio por género" "$QUERY9"
 
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY3" 2>/dev/null
-
-STUDENT_AVG=$($MYSQL_CMD_SILENT -e "SELECT ROUND(AVG(preco), 2) FROM games;" 2>/dev/null)
-compare_count "Preço médio" "$STUDENT_AVG" "51.99"
-echo ""
-
-# ==========================================
-# TESTE 4: Jogo mais caro
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 4: Encontrar jogo mais caro${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY4=$(execute_student_query 4)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY4"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY4" 2>/dev/null
-
-STUDENT_TITLE=$($MYSQL_CMD_SILENT -e "$QUERY4" 2>/dev/null | awk '{print $2}')
-compare_count "Título do jogo mais caro" "$STUDENT_TITLE" "God"
-echo ""
-
-# ==========================================
-# TESTE 5: Jogo com menor nota
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 5: Jogo com menor nota${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY5=$(execute_student_query 5)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY5"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY5" 2>/dev/null
-
-STUDENT_TITLE=$($MYSQL_CMD_SILENT -e "$QUERY5" 2>/dev/null | awk '{print $2}')
-compare_count "Jogo com menor nota" "$STUDENT_TITLE" "Cyberpunk"
-echo ""
-
-# ==========================================
-# TESTE 6: Top 5 jogos mais vendidos
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 6: Top 5 jogos mais vendidos${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY6=$(execute_student_query 6)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY6"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY6" 2>/dev/null
-
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY6" 2>/dev/null | wc -l)
-compare_count "Quantidade de jogos" "$STUDENT_COUNT" "5"
-echo ""
-
-# ==========================================
-# TESTE 7: Jogos por plataforma
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 7: Contar jogos por plataforma${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY7=$(execute_student_query 7)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY7"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY7" 2>/dev/null
-
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY7" 2>/dev/null | wc -l)
-compare_count "Número de plataformas" "$STUDENT_COUNT" "4"
-echo ""
-
-# ==========================================
-# TESTE 8: Total de cópias vendidas
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 8: Total de cópias vendidas${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY8=$(execute_student_query 8)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY8"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY8" 2>/dev/null
-
-STUDENT_SUM=$($MYSQL_CMD_SILENT -e "$QUERY8" 2>/dev/null)
-compare_count "Total de cópias vendidas" "$STUDENT_SUM" "762000000"
-echo ""
-
-# ==========================================
-# TESTE 9: Preço médio por género
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 9: Preço médio por género${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY9=$(execute_student_query 9)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY9"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY9" 2>/dev/null
-
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY9" 2>/dev/null | wc -l)
-compare_count "Número de géneros" "$STUDENT_COUNT" "8"
-echo ""
-
-# ==========================================
-# TESTE 10: Plataformas com mais de 2 jogos
-# ==========================================
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-echo -e "${BLUE}TESTE 10: Plataformas com mais de 2 jogos${NC}"
-echo -e "${CYAN}════════════════════════════════════════${NC}"
-
-QUERY10=$(execute_student_query 10)
-echo -e "${YELLOW}Query do aluno:${NC}"
-echo "$QUERY10"
-echo ""
-
-echo -e "${YELLOW}Resultado:${NC}"
-$MYSQL_CMD -e "$QUERY10" 2>/dev/null
-
-STUDENT_COUNT=$($MYSQL_CMD_SILENT -e "$QUERY10" 2>/dev/null | wc -l)
-compare_count "Plataformas com mais de 2 jogos" "$STUDENT_COUNT" "3"
-echo ""
+# Teste 10
+QUERY10=$(extract_query 10)
+compare_query_results 10 "Plataformas com mais de 2 jogos" "$QUERY10"
 
 # ==========================================
 # RESUMO FINAL
@@ -243,16 +154,20 @@ echo ""
 echo -e "${CYAN}=========================================="
 echo "           RESUMO DOS TESTES"
 echo -e "==========================================${NC}"
-echo -e "${GREEN}Testes Aprovados:${NC} $PASSED"
-echo -e "${RED}Testes Falhados:${NC}  $FAILED"
+echo -e "${GREEN}✓ Testes Aprovados: $PASSED${NC}"
+echo -e "${RED}✗ Testes Falhados:  $FAILED${NC}"
 echo -e "${CYAN}=========================================="
 echo "Total de Testes: 10"
 echo -e "==========================================${NC}"
+echo ""
+
+# Limpar arquivos temporários
+rm -rf /tmp/student_results
 
 if [ $FAILED -gt 0 ]; then
-    echo -e "${RED}❌ Alguns testes falharam!${NC}"
+    echo -e "${RED}❌ Alguns testes falharam. Revise suas queries!${NC}"
     exit 1
 else
-    echo -e "${GREEN}🎉 Parabéns! Todos os testes passaram!${NC}"
+    echo -e "${GREEN}🎉 Parabéns! Todos os testes passaram com sucesso!${NC}"
     exit 0
 fi
