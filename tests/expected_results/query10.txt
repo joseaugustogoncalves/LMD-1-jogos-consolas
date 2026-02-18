@@ -1,0 +1,4 @@
+PC	5
+PlayStation	4
+Nintendo Switch	3
+Xbox	3

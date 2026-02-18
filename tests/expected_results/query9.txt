@@ -1,0 +1,8 @@
+Desporto	69.99
+Aventura	59.99
+Corrida	59.99
+Simulação	59.99
+Ação	54.99
+RPG	54.99
+Sandbox	26.95
+FPS	20.00
