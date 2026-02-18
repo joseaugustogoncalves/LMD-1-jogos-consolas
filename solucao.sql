@@ -1,4 +1,5 @@
 USE games_systems;
+
 -- 1. Listar todos os jogos
 -- Sua query aqui
 
