@@ -250,7 +250,7 @@ echo "Total de Testes: 10"
 echo -e "==========================================${NC}"
 
 if [ $FAILED -gt 0 ]; then
-    echo -e "${RED}❌ Alguns testes falharam. Revise suas queries!${NC}"
+    echo -e "${RED}❌ Alguns testes falharam!${NC}"
     exit 1
 else
     echo -e "${GREEN}🎉 Parabéns! Todos os testes passaram!${NC}"
