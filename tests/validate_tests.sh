@@ -26,19 +26,23 @@ echo ""
 
 # Função para extrair query do arquivo do aluno
 extract_query() {
-    local query_number=$1
-    local start_marker="-- ===== QUERY $query_number ====="
-    local end_marker="-- ===== QUERY"
-    
-    # Extrair a query entre os marcadores
-    awk "/$start_marker/,/$end_marker/" solucao.sql | \
-        grep -v "=====" | \
-        grep -v "^--" | \
-        grep -v "^$" | \
-        tr '\n' ' ' | \
-        sed 's/;$//'
-}
+  local n="$1"
+  local start="-- ===== QUERY ${n} ====="
+  local next="-- ===== QUERY $((n+1)) ====="
 
+  # Extrai entre QUERY n e QUERY n+1 (ou até EOF se for a última)
+  awk -v start="$start" -v next="$next" '
+    $0 ~ start {flag=1; next}
+    $0 ~ next {flag=0}
+    flag {print}
+  ' solucao.sql \
+  | sed 's/\r$//' \
+  | grep -v '^[[:space:]]*--' \
+  | grep -v '^[[:space:]]*$' \
+  | tr '\n' ' ' \
+  | sed 's/[[:space:]]\+/ /g' \
+  | sed 's/[[:space:]]*$//'
+}
 # Função para comparar resultados
 compare_query_results() {
     local test_number=$1
