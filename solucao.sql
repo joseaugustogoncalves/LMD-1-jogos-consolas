@@ -45,3 +45,4 @@ GROUP BY
     plataforma
 HAVING
     COUNT(*) > 2;
+    
