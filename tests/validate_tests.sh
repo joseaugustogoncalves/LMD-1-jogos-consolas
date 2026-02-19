@@ -24,7 +24,7 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SOLUTION_SQL="$ROOT_DIR/solucao.sql"
 
 echo "=========================================="
-echo "  VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
+echo " >> VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
 echo "=========================================="
 echo ""
 
