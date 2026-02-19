@@ -27,13 +27,12 @@ echo ""
 # Função para extrair query do arquivo do aluno
 extract_query() {
   local n="$1"
-  local start="-- ===== QUERY ${n} ====="
-  local next="-- ===== QUERY $((n+1)) ====="
-
-  # Extrai entre QUERY n e QUERY n+1 (ou até EOF se for a última)
-  awk -v start="$start" -v next="$next" '
+  # Começa numa linha que seja um comentário "-- <n>."
+  # Termina quando encontrar o próximo número "-- <n+1>." ou EOF
+  awk -v n="$n" '
+    BEGIN {start="^--[[:space:]]*" n "\\."; next="^--[[:space:]]*" (n+1) "\\."}
     $0 ~ start {flag=1; next}
-    $0 ~ next {flag=0}
+    $0 ~ next  {flag=0}
     flag {print}
   ' solucao.sql \
   | sed 's/\r$//' \
