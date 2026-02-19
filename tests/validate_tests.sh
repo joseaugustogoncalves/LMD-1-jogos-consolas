@@ -19,6 +19,10 @@ MYSQL_CMD_TABLE="mysql -h 127.0.0.1 -u root -ppassword games_systems --table"
 # Diretório temporário para resultados do aluno
 mkdir -p /tmp/student_results
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+SOLUTION_SQL="$ROOT_DIR/solucao.sql"
+
 echo "=========================================="
 echo "  VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
 echo "=========================================="
@@ -26,19 +30,24 @@ echo ""
 
 # Função para extrair query do arquivo do aluno
 extract_query() {
-    local query_number=$1
-    local start_marker="-- ===== QUERY $query_number ====="
-    local end_marker="-- ===== QUERY"
-    
-    # Extrair a query entre os marcadores
-    awk "/$start_marker/,/$end_marker/" solucao.sql | \
-        grep -v "=====" | \
-        grep -v "^--" | \
-        grep -v "^$" | \
-        tr '\n' ' ' | \
-        sed 's/;$//'
-}
+  local n="$1"
 
+  awk -v n="$n" '
+    BEGIN {
+      startMarker="^--[[:space:]]*" n "\\."
+      endMarker="^--[[:space:]]*" (n+1) "\\."
+    }
+    $0 ~ startMarker {flag=1; next}
+    $0 ~ endMarker   {flag=0}
+    flag {print}
+  ' "$SOLUTION_SQL" \
+  | sed 's/\r$//' \
+  | grep -v '^[[:space:]]*--' \
+  | grep -v '^[[:space:]]*$' \
+  | tr '\n' ' ' \
+  | sed 's/[[:space:]]\+/ /g' \
+  | sed 's/[[:space:]]*$//'
+}
 # Função para comparar resultados
 compare_query_results() {
     local test_number=$1
@@ -110,6 +119,7 @@ compare_query_results() {
 
 # Teste 1
 QUERY1=$(extract_query 1)
+echo "DEBUG Q1=[$QUERY1]"
 compare_query_results 1 "Listar todos os jogos" "$QUERY1"
 
 # Teste 2
