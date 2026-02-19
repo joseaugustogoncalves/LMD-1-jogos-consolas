@@ -20,7 +20,7 @@ MYSQL_CMD_TABLE="mysql -h 127.0.0.1 -u root -ppassword games_systems --table"
 mkdir -p /tmp/student_results
 
 echo "=========================================="
-echo "  VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
+echo " >> VALIDAÇÃO DE QUERIES SQL - GAMES SYSTEMS"
 echo "=========================================="
 echo ""
 
